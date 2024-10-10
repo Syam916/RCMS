@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regulatory Compliance Status</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/user/entity_user.css') }}">
+    <style>
+        .mandatory {
+            color: red;
+            font-weight: bold;
+        }
+        .back-button {
+            margin-top: 20px;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .back-button:hover {
+            background-color: #45a049;
+        }
+        .compliance-grid {
+            max-height: 70vh; /* Adjust the height as needed */
+            overflow-y: auto; /* Enables vertical scrolling */
+            padding-bottom: 20px; /* Optional: Padding at the bottom */
+        }
+        .status-table-wrapper {
+            border: 1px solid #ddd; /* Optional: Add border to each table */
+            margin-bottom: 20px; /* Space between tables */
+        }
+    </style>
+
+    
+</head>
+<body>
+    <div class="container">
+        <div class="top-section">
+            <div class="top-section-inner">
+                <div class="user-info">User ID: {{ user_id }}</div>
+                <div class="user-info">Entity ID: {{ entity_id }}</div>
+                <form action="{{ url_for('logout_user') }}" method="POST">
+                    <button type="submit" class="logout-button">Logout</button>
+                </form>
+            </div>
+            <h1>Regulatory Compliance Status</h1>
+            <div class="filter-options">
+                <label><input type="radio" name="month-filter" value="current" checked> Current Month</label>
+                <label><input type="radio" name="month-filter" value="last"> Last Month</label>
+                <label><input type="radio" name="month-filter" value="next"> Next Month</label>
+            </div>
+        </div>
+
+        <div class="compliance-grid">
+            <!-- Delayed tasks -->
+            <div class="status-table delayed">
+                <h2>Delayed</h2>
+                <div class="status-table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Regulation Name</th>
+                                <th>Activity</th>
+                                <th>Due On</th>
+                            </tr>
+                        </thead>
+                        <tbody id="delayed-tasks">
+                            {% for task in delayed %}
+                            <tr class="
+                                {% if task.criticality == 'High' %}
+                                    high-criticality
+                                {% elif task.criticality == 'Medium' %}
+                                    medium-criticality
+                                {% elif task.criticality == 'Low' %}
+                                    low-criticality
+                                {% endif %}">
+                                <td>{{ task.regulation_name }}</td>
+                                <td>
+                                    <a href="/view_activity/{{ task.activity_id }}?role={{ role }}&regulation_id={{ task.regulation_id }}&due_on={{ task.due_on.split('/').reverse().join('-') }}">
+                                        {{ task.activity }}
+                                    </a>
+                                </td>
+                                <td>{{ task.due_on }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- In Progress tasks -->
+            <div class="status-table in-progress">
+                <h2>In Progress</h2>
+                <div class="status-table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Regulation Name</th>
+                                <th>Activity</th>
+                                <th>Due On</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inprogress-tasks">
+                            {% for task in in_progress %}
+                            <tr class="
+                            {% if task.criticality == 'High' and task.due_on < current_date %}
+                                high-criticality-due-future
+                            {% elif task.criticality == 'High' %}
+                                high-criticality
+                            {% elif task.criticality == 'Medium' %}
+                                medium-criticality
+                            {% elif task.criticality == 'Low' %}
+                                low-criticality
+                            {% endif %}">
+                                <td>{{ task.regulation_name }}</td>
+                                <td>
+                                    {% if role == 'review' and task.status != 'Completed' %}
+                                        <span class="disabled-link">{{ task.activity }}</span>
+                                    {% else %}
+                                        <a href="/view_activity/{{ task.activity_id }}?role={{ role }}&regulation_id={{ task.regulation_id }}&due_on={{ task.due_on.split('/').reverse().join('-') }}">
+                                            {{ task.activity }}
+                                        </a>
+                                    {% endif %}
+                                    <span class="{% if role == 'preparation' %}preparation-role{% else %}review-role{% endif %}">
+                                        ({{ role | capitalize }})
+                                    </span>
+                                </td>
+                                <td>{{ task.due_on }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Due This Month -->
+            <div class="status-table due-this-month">
+                <h2>Due This Month</h2>
+                <div class="status-table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Regulation Name</th>
+                                <th>Activity</th>
+                                <th>Due On</th>
+                            </tr>
+                        </thead>
+                        <tbody id="due-this-month-tasks">
+                            {% for task in due_this_month %}
+                            <tr class="
+                                {% if task.criticality == 'High' %}
+                                    high-criticality
+                                {% elif task.criticality == 'Medium' %}
+                                    medium-criticality
+                                {% elif task.criticality == 'Low' %}
+                                    low-criticality
+                                {% endif %}">
+                                <td>{{ task.regulation_name }}</td>
+                                <td>
+                                    <a href="/view_activity/{{ task.activity_id }}?role={{ role }}&regulation_id={{ task.regulation_id }}&due_on={{ task.due_on.split('/').reverse().join('-') }}">
+                                        {{ task.activity }}
+                                    </a>
+                                </td>
+                                <td>{{ task.due_on }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Completed tasks -->
+            <div class="status-table completed">
+                <h2>Completed</h2>
+                <div class="status-table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Regulation Name</th>
+                                <th>Activity</th>
+                                <th>Due On</th>
+                            </tr>
+                        </thead>
+                        <tbody id="completed-tasks"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const userId = "{{ user_id }}";
+
+        function fetchFilteredTasks(filter) {
+            fetch(`/get_filtered_tasks?filter=${filter}`)
+                .then(response => response.json())
+                .then(data => {
+                    const delayedTable = document.getElementById('delayed-tasks');
+                    const inProgressTable = document.getElementById('inprogress-tasks');
+                    const dueThisMonthTable = document.getElementById('due-this-month-tasks');
+                    const completedTable = document.getElementById('completed-tasks');
+
+                    delayedTable.innerHTML = '';
+                    inProgressTable.innerHTML = '';
+                    dueThisMonthTable.innerHTML = '';
+                    completedTable.innerHTML = '';
+
+                    const currentDate = new Date();
+
+                    data.forEach(task => {
+                        let role = '';
+
+                        if (task.preparation_responsibility === userId) {
+                            role = 'preparation';
+                        } else if (task.review_responsibility === userId) {
+                            role = 'review';
+                        }
+
+                        if (!role) return;
+
+                        const dueDate = new Date(task.due_on.split('/').reverse().join('-'));
+
+                        const criticalityClass = task.criticality === 'Low' ? 'low-criticality' :
+                                                 task.criticality === 'Medium' ? 'medium-criticality' :
+                                                 task.criticality === 'High' ? 'high-criticality' : '';
+
+                        const rowClass = task.status !== 'Completed' && dueDate < currentDate ? 'delayed-row' : '';
+
+                        let linkHtml = '';
+                        if (role === 'review' && task.status !== 'Completed') {
+                            linkHtml = `<span class="disabled-link">${task.activity}</span>`;
+                        } else {
+                            linkHtml = `<a href="/view_activity/${task.activity_id}?role=${role}&regulation_id=${task.regulation_id}&due_on=${task.due_on.split('/').reverse().join('-')}">${task.activity}</a>`;
+                        }
+
+                        const row = `
+                            <tr class="${criticalityClass} ${rowClass}">
+                                <td>${task.regulation_name}</td>
+                                <td>
+                                    ${linkHtml}
+                                    <span class="${role === 'preparation' ? 'preparation-role' : 'review-role'}">(${role.charAt(0).toUpperCase() + role.slice(1)})</span>
+                                </td>
+                                <td>${task.due_on}</td>
+                            </tr>`;
+
+                        if (task.status === 'Yet to Start' && dueDate >= currentDate) {
+                            dueThisMonthTable.innerHTML += row;
+                        } else if (task.status === 'Yet to Start' && dueDate < currentDate) {
+                            delayedTable.innerHTML += row;
+                        } else if (task.status === 'WIP') {
+                            inProgressTable.innerHTML += row;
+                        } else if (task.status === 'Completed') {
+                            completedTable.innerHTML += row;
+                        }
+                    });
+                })
+                .catch(error => console.error('Error fetching tasks:', error));
+        }
+
+        const filterRadios = document.querySelectorAll('input[name="month-filter"]');
+        filterRadios.forEach(radio => {
+            radio.addEventListener('change', function () {
+                const selectedFilter = this.value;
+                fetchFilteredTasks(selectedFilter);
+            });
+        });
+
+        fetchFilteredTasks('current');
+    </script>    
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity Details</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/user/activity_details.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> <!-- SweetAlert2 CDN -->
+    <style>
+        .mandatory {
+            color: red;
+            font-weight: bold;
+        }
+        .back-button {
+            margin-top: 20px;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            float: right; /* Align to the right */
+        }
+        .back-button:hover {
+            background-color: #45a049;
+        }
+        .info-section {
+            background-color: #f0f8ff; /* Light background color to differentiate */
+            padding: 15px; /* Add padding for better spacing */
+            border-radius: 5px; /* Optional: Add border radius for rounded corners */
+            margin-bottom: 20px; /* Space below the info section */
+        }
+        /* Dropdown and upload button styles */
+        select {
+            padding: 1px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-top: 5px;
+            width: 100%; /* Full width */
+            box-sizing: border-box; /* Includes padding and border in the element's total width */
+            font-size: 12px; /* Increase font size */
+        }
+        select:focus {
+            border-color: #4CAF50; /* Green border on focus */
+            outline: none; /* Remove outline */
+        }
+        /* Custom file upload button */
+        input[type="file"] {
+            display: none; /* Hide the default file input */
+        }
+        .custom-upload {
+            background-color: #4CAF50; /* Change the upload button color */
+            color: white;
+            padding: 1px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%; /* Full width */
+            text-align: center; /* Center the text */
+            transition: background-color 0.3s, transform 0.2s; /* Transition effects */
+        }
+        .custom-upload:hover {
+            background-color: #45a049; /* Darker green on hover */
+            transform: scale(1.05); /* Slightly increase size on hover */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Display user_id, entity_id, and due_on with a background color -->
+        <div class="info-section">
+            <p><strong>User ID:</strong> {{ user_id }}</p>
+            <p><strong>Entity ID:</strong> {{ entity_id }}</p>
+            <p><strong>Due On:</strong> {{ due_on }}</p>
+        </div>
+       
+        <!-- Update the heading to display regulation_name -->
+        <h1 class="heading">Regulation: {{ activity.regulation_name }}</h1>
+ 
+        <form id="activity-form" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="activity_id" value="{{ activity.activity_id }}">
+            <input type="hidden" name="role" value="{{ role }}">
+            <input type="hidden" name="regulation_id" value="{{ regulation_id }}">
+            <input type="hidden" name="user_id" value="{{ user_id }}">
+            <input type="hidden" name="entity_id" value="{{ entity_id }}">
+            <input type="hidden" name="due_on" value="{{ due_on }}">
+ 
+            <table>
+                <thead>
+                    <tr>
+                        <th>Activity ID</th>
+                        <th>Activity</th>
+                        <th>Description</th>
+                        {% if role == 'preparation' %}
+                            <th>Remarks</th>
+                            <th>Status</th>
+                            <th>Upload</th>
+                        {% elif role == 'review' %}
+                            <th>Review Comments</th>
+                            <th>Upload</th>
+                        {% endif %}
+                        <th>Submit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>{{ activity.activity_id }}</td>
+                        <td>
+                            {{ activity.activity }}
+                            {% if 'M' in activity.mandatory_optional %}
+                                <span class="mandatory">*</span>
+                            {% endif %}
+                        </td>                        
+                        <td>{{ activity.activity_description }}</td>
+ 
+                        {% if role == 'preparation' %}
+                            <!-- Display the retrieved remarks -->
+                            <td><textarea name="remarks">{{ remarks }}</textarea></td>
+                            <!-- Show the status from the database -->
+                            <td>
+                                <select name="status">
+                                    <option value="Yet to Start" {% if status == 'Yet to Start' %}selected{% endif %}>Yet to Start</option>
+                                    <option value="WIP" {% if status == 'WIP' %}selected{% endif %}>WIP</option>
+                                    <option value="Completed" {% if status == 'Completed' %}selected{% endif %}>Completed</option>
+                                </select>
+                            </td>
+                            <td>
+                                <label class="submit-button" for="upload_file">Upload</label>
+                                <input type="file" id="upload_file" name="upload_file">
+                            </td>
+                        {% elif role == 'review' %}
+                            <td><textarea name="review_comments">{{ review_comments or '' }}</textarea></td>
+                            <td>
+                                <label class="custom-upload" for="review_upload_file">Upload Review File</label>
+                                <input type="file" id="review_upload_file" name="review_upload_file">
+                            </td>
+                        {% endif %}
+                       
+                        <td><button type="submit" class="submit-button">Submit</button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </form>
+ 
+        <!-- Back Button -->
+        <button class="back-button" onclick="goBack()">Back</button>
+ 
+    </div>
+ 
+<script>
+    // Back button functionality to return to the previous page
+    function goBack() {
+        window.location.href = "{{ url_for('entity_user') }}"; // Changed to 'entity_user'
+    }
+ 
+    // SweetAlert instead of default alert for form submission success
+    document.getElementById('activity-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        fetch('/submit_activity', { method: 'POST', body: formData })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    title: 'Success!',
+                    text: 'Activity submitted successfully.',
+                    icon: 'success',
+                    confirmButtonText: 'OK'
+                }).then(() => {
+                    // Redirect to entity_user.html after confirmation
+                    window.location.href = "{{ url_for('entity_user') }}"; // Changed to 'entity_user'
+                });
+            } else {
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Error submitting activity.',
+                    icon: 'error',
+                    confirmButtonText: 'Try Again'
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire({
+                title: 'Error!',
+                text: 'Something went wrong.',
+                icon: 'error',
+                confirmButtonText: 'Try Again'
+            });
+        });
+    });
+</script>
+ 
+</body>
+</html>

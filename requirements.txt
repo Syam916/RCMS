@@ -1,0 +1,14 @@
+
+
+
+Flask-WTF
+wtforms
+APScheduler
+python-dateutil
+pymysql
+mysql-connector-python
+Flask-Mail
+google-api-python-client
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
